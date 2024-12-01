@@ -15,4 +15,13 @@ app.get("/User", userAuth, (req, res, next) => {
   res.send("User logged in successfully.");
   console.log("logged in successfully");
 });
+
+app.get("/getUser/data", ( req, res) => {
+  try {
+    throw new Error("abc");
+    res.send("User send data");
+  } catch (err) {
+    res.status(500).send("sometinh went wrong,please contact to support team");
+  }
+});
 app.listen(3000, () => console.log("Server connected on port 3000"));
