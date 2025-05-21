@@ -1,10 +1,15 @@
 import express from "express";
+import bcrypt from "bcrypt";
 import { adminAuth, userAuth } from "./Middlewares/Auth.js";
 import connectDb from "./config/database.js";
 import User from "./Models/user.js";
 import { Error } from "mongoose";
+import validationSignUp from "./utils/validation.js";
+import cookieParser from "cookie-parser";
+import  jwt  from "jsonwebtoken";
 const app = express();
 app.use(express.json());
+app.use(cookieParser);
 
 // Find User By EmailID
 
@@ -89,16 +94,27 @@ app.patch("/user/:userId", async (req, res) => {
     res.status(500).send("Something went wrong: " + error.message);
   }
 });
+//-----------------------Sign Up -----------------------------------------------
 
-app.post("/signUp", async (req, res) => {
-  const { emailId } = req.body;
+app.post("/signup", async (req, res) => {
+  const { firstName, lastName, password, emailId, gender, skills } = req.body;
 
   try {
     const existing = await User.findOne({ emailId });
     if (existing) {
       return res.status(400).send("User already exists with this email ID");
     }
-    const user = new User(req.body);
+    validationSignUp(req);
+    const hashPassword = await bcrypt.hash(password, 10);
+
+    const user = new User({
+      firstName,
+      lastName,
+      emailId,
+      password: hashPassword,
+      gender,
+      skills,
+    });
 
     await user.save();
     console.log(user);
@@ -109,10 +125,46 @@ app.post("/signUp", async (req, res) => {
     }
   }
 });
+
+//-------------------------------> Login Page  -----------------------------------
+app.get("/signin", async(req, res) => {
+  const { emailId, password } = req.body;
+
+  try {
+    // Check if both email and password are provided
+    if (!emailId || !password) {
+      return res
+        .status(400)
+        .send({ message: "Email and password are required" });
+    }
+
+    // Find the user by email
+    const user = await User.findOne({ emailId: emailId });
+    if (!user) {
+      return res.status(403).send({ message: "Invalid email or password" });
+    }
+
+    // Compare passwords
+    const isPasswordMatched = await bcrypt.compare(password, user.password);
+    if (!isPasswordMatched) {
+      return res.status(403).send({ message: "Invalid email or password" });
+    }
+
+    // creating a JWT
+    const token =  jwt.sign({ _id: user._id }, "devTinder@119");
+    res.cookie("token", token); 
+    res.status(200).send({ message: "Login Successful" });
+  } catch (e) {
+    console.error(e);
+    res.status(500).send({ message: "Internal Server Error" });
+  }
+});
+
 connectDb()
   .then(() => {
     console.log("connection established");
     app.listen(3000, () => console.log("Server connected on port 3000"));
+    console.log("server started");
   })
   .catch((err) => {
     console.log("connection error");

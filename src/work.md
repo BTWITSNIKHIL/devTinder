@@ -30,3 +30,10 @@ how to Handle https put post get delete routes
   Never trust on req.body
   use validation on all necessary places
   
+
+
+  date 16/01/25
+
+  install bcrypt
+  use bcrypt in signup or signIn
+  use validator
